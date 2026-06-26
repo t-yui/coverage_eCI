@@ -9,5 +9,6 @@
 
 !.gitignore
 !.gitkeep
+!requirements.txt
 !LICENSE
 !README.md
