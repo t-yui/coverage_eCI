@@ -1,6 +1,6 @@
 # coverage_eCI
 
-This repository is dedicated to the data availability for the paper "Aligning Empirical Uncertainty Intervals with the GCM-Ensemble Mean in Projecting Climate Change Impacts on Health."
+This repository is dedicated to the data availability.
 
 # How to conduct simulations
 
