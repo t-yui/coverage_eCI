@@ -14,7 +14,7 @@ from logzero import logger
 """
 # usage
 python simulation_gcm_intervals_estimated_variance.py \
---n-repetitions 10000 \
+--n-repetitions 100000 \
 --sample-size 100 \
 --n-draws 10000 \
 --seed 1 \
@@ -51,7 +51,7 @@ def run_simulation(
     n_draws: int,
     seed: int,
     batch_size: int,
-    t_draw=False
+    t_draw=False,
 ) -> pd.DataFrame:
 
     if n_repetitions <= 0:
@@ -68,20 +68,15 @@ def run_simulation(
     deltas = (0.0, 0.5, 1.0, 2.0)
 
     setting_configs: list[tuple[str, str, int, float, float]] = [
-        ("symmetric", "Symmetric", 3, delta, 0.0)
-        for delta in deltas
+        ("symmetric", "Symmetric", 3, delta, 0.0) for delta in deltas
     ]
-    setting_configs.append(
-        ("asymmetric", "Asymmetric", 50, np.nan, 2.0 * scale)
-    )
+    setting_configs.append(("asymmetric", "Asymmetric", 50, np.nan, 2.0 * scale))
 
     master_seed_sequence = np.random.SeedSequence(seed)
     setting_seed_sequences = master_seed_sequence.spawn(len(setting_configs))
 
     z_975 = float(norm.ppf(0.975))
-    limiting_coverage_mu = float(
-        2.0 * t.cdf(z_975, df=sample_size - 1) - 1.0
-    )
+    limiting_coverage_mu = float(2.0 * t.cdf(z_975, df=sample_size - 1) - 1.0)
 
     rows: list[dict[str, float | int | str]] = []
 
@@ -98,12 +93,15 @@ def run_simulation(
         sum_width_eci = 0.0
         sum_width_ratio = 0.0
 
-        for iteration_start in tqdm(range(0, n_repetitions, batch_size), desc="Setting: {0}".format(setting_config)):
+        for iteration_start in tqdm(
+            range(0, n_repetitions, batch_size),
+            desc="Setting: {0}".format(setting_config),
+        ):
             current_batch = min(batch_size, n_repetitions - iteration_start)
 
             observations = rng.normal(
                 loc=theta_0,
-                scale=np.sqrt{sample_size},
+                scale=np.sqrt(sample_size),
                 size=(current_batch, sample_size),
             )
             theta_hat = observations.mean(axis=1)
@@ -119,10 +117,7 @@ def run_simulation(
                 )
             else:
                 _draws = rng.normal(size=(current_batch, n_draws))
-            coefficient_draws = (
-                theta_hat[:, None]
-                + sigma_hat[:, None] * _draws
-            )
+            coefficient_draws = theta_hat[:, None] + sigma_hat[:, None] * _draws
 
             # extract quantiles
             q_mu = np.quantile(
@@ -200,17 +195,13 @@ def run_simulation(
                 "b_bar": b_bar,
                 "coverage_I_mu": coverage_mu,
                 "coverage_I_eCI": coverage_eci,
-                "mcse_I_mu": np.sqrt(
-                    coverage_mu * (1.0 - coverage_mu) / n_repetitions
-                ),
+                "mcse_I_mu": np.sqrt(coverage_mu * (1.0 - coverage_mu) / n_repetitions),
                 "mcse_I_eCI": np.sqrt(
                     coverage_eci * (1.0 - coverage_eci) / n_repetitions
                 ),
                 "mean_width_I_mu": sum_width_mu / n_repetitions,
                 "mean_width_I_eCI": sum_width_eci / n_repetitions,
-                "mean_within_repetition_width_ratio": (
-                    sum_width_ratio / n_repetitions
-                ),
+                "mean_within_repetition_width_ratio": (sum_width_ratio / n_repetitions),
                 "ratio_of_mean_widths": sum_width_eci / sum_width_mu,
                 "limiting_coverage_I_mu_J_infinity": limiting_coverage_mu,
             }
@@ -243,7 +234,7 @@ def main() -> None:
         n_draws=args.n_draws,
         seed=args.seed,
         batch_size=args.batch_size,
-        t_draw=False
+        t_draw=False,
     ).assign(draw_distribution="normal")
     logger.info("Drawing from t")
     results_t = run_simulation(
@@ -252,7 +243,7 @@ def main() -> None:
         n_draws=args.n_draws,
         seed=args.seed,
         batch_size=args.batch_size,
-        t_draw=True
+        t_draw=True,
     ).assign(draw_distribution="t")
     results = pd.concat(
         [results_normal, results_t],
@@ -277,7 +268,11 @@ def main() -> None:
         "mean_within_repetition_width_ratio",
     ]
     with pd.option_context("display.max_columns", None, "display.width", 160):
-        print(results[display_columns].to_string(index=False, float_format=lambda x: f"{x:.6f}"))
+        print(
+            results[display_columns].to_string(
+                index=False, float_format=lambda x: f"{x:.6f}"
+            )
+        )
     print(f"\nSaved full results to: {args.output.resolve()}")
 
 
