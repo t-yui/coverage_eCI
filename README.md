@@ -1,6 +1,6 @@
 # coverage_eCI
 
-This repository is dedicated to the code availability for the paper: Aligning Empirical Confidence Intervals with the GCM-Ensemble Mean in Projecting Climate Change Impacts on Health.
+This repository is dedicated to the code availability for the paper: A Methodological Note on Empirical Confidence Intervals for the GCM-Ensemble Mean in Projecting Climate Change Impacts on Health.
 
 # How to conduct simulations
 
@@ -15,7 +15,7 @@ pip install -r requirements.txt
 ## Run simulation code
 
 ```bash
-python simulation_gcm_intervals_estimated_variance.py \
+python scripts/simulation_gcm_intervals_estimated_variance.py \
 --n-repetitions 100000 \
 --sample-size 100 \
 --n-draws 10000 \
