@@ -57,7 +57,7 @@ bash run_all_experiments.sh
 To perform each experiment separately, set the configurations at the top of each script and execute the following commands from the `scripts` directory.
 Each simulation script accepts `--quick` for a small run to check the code.
 
-1. Exact coverage under the linear Gaussian model (configurations, a distant GCM, heterogeneous sensitivities, and the super-population mean)
+1. Exact coverage under the linear Gaussian model (configurations, a distant GCM, differences among the GCM-specific impacts depending on the coefficient, and the super-population mean)
 
 ```sh
 python3 exact_coverage.py
@@ -103,5 +103,5 @@ The numerical results in version 1 of the preprint on medRxiv (doi: [10.64898/20
 ### Computation time
 
 With `N_JOBS = 4`, the projection-type simulation with $2{,}000$ repetitions takes about 5 minutes.
-The exact computations take about 40 minutes, most of which is the numerical minimization of the coverage under heterogeneous sensitivities.
+The exact computations take about 40 minutes, most of which is the numerical minimization of the coverage when the differences among the GCM-specific impacts depend on the coefficient.
 The code was checked with Python 3.9 and 3.13.

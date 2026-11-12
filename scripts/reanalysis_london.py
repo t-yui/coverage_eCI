@@ -10,6 +10,8 @@ window centered on the 2 degC global warming level of each GCM, and 2079-2099),
 we compute the point estimate (mean across GCMs), I_eCI, I_mu, and I_RE,t
 from the daily attributable numbers of deaths (point estimate and coefficient draws).
 The point estimates and I_eCI are checked against the summaries saved by the tutorial.
+For the 21-year periods, the Monte Carlo standard errors of the endpoints are
+estimated by the standard deviations over resamples of the coefficient draws.
 """
 
 import os
@@ -34,6 +36,9 @@ CONFIG = {
     "WARMING_LEVEL": "2",
     "AGE_ORDER": ["00_74", "75plus", "total"],
     "VALIDATION_TOLERANCE": 1e-6,
+    # resampling of the coefficient draws for the Monte Carlo standard errors
+    "N_RESAMPLE": 2000,
+    "RANDOM_STATE": 20261112,
     "RESULT_DIR": ROOT / "results_reanalysis",
 }
 
@@ -112,6 +117,30 @@ def summarize(sums_by_gcm, alpha):
     }
 
 
+def monte_carlo_se(sums_by_gcm, alpha, rng):
+    """
+    standard deviations of the endpoints over resamples (with replacement) of the
+    J coefficient draws; the impacts under the GCMs with the same draw are kept together
+    """
+    M = np.column_stack(sums_by_gcm)
+    H_hat, H_draws = M[0], M[1:]
+    n_draws = H_draws.shape[0]
+    ends = np.empty((CONFIG["N_RESAMPLE"], 6))
+    for b in range(CONFIG["N_RESAMPLE"]):
+        X = H_draws[rng.integers(0, n_draws, n_draws)]
+        ends[b] = [
+            *interval_eci(X, alpha),
+            *interval_mu(X, alpha),
+            *interval_re_t(H_hat, X, alpha),
+        ]
+    se = ends.std(axis=0, ddof=1)
+    return {
+        f"{m}_{e}": se[2 * k + i]
+        for k, m in enumerate(["eci", "mu", "re_t"])
+        for i, e in enumerate(["low", "high"])
+    }
+
+
 def ordered_columns(df):
     sims = sorted(
         [c for c in df.columns if c != "est"], key=lambda c: int(c.replace("sim", ""))
@@ -134,6 +163,8 @@ def main():
 
     rows = []
     sd_rows = []
+    se_rows = []
+    rng = np.random.default_rng(CONFIG["RANDOM_STATE"])
     # 21-year periods
     for period in ["gwl", "endcentury"]:
         for age in CONFIG["AGE_ORDER"]:
@@ -158,6 +189,11 @@ def main():
                 )
             for alpha in CONFIG["ALPHA_LIST"]:
                 s = summarize(sums, alpha)
+                se = monte_carlo_se(sums, alpha, rng)
+                se_rows.append(
+                    {"time": period, "age_group": age, "alpha": alpha}
+                    | {k: v / CONFIG["PERIOD_YEARS"] for k, v in se.items()}
+                )
                 if alpha == 0.05:
                     ref = original[period][age]
                     validate(s["fit"], float(ref["fit"].iloc[0]), f"{period}/{age}/fit")
@@ -233,6 +269,14 @@ def main():
     sd = pd.DataFrame(sd_rows)
     sd.to_csv(out / "reanalysis_gcm_sd.csv", index=False)
     print(sd.round(1).to_string(index=False))
+    se = pd.DataFrame(se_rows)
+    se.to_csv(out / "reanalysis_mc_se.csv", index=False)
+    print("Monte Carlo standard errors of the endpoints")
+    print(
+        se.round({c: 1 for c in se.columns if c.endswith(("_low", "_high"))}).to_string(
+            index=False
+        )
+    )
 
 
 if __name__ == "__main__":
