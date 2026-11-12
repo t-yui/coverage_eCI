@@ -27,15 +27,38 @@ CONFIG_LABELS = {
     "symmetric, delta=2.0": r"Symmetric, $\delta=2$",
     "one distant GCM, L=50": "One distant GCM",
 }
-CONFIG_L = {"symmetric, delta=0.0": 3, "symmetric, delta=0.5": 3, "symmetric, delta=1.0": 3, "symmetric, delta=2.0": 3, "one distant GCM, L=50": 50}
-CONFIG_MU = {"symmetric, delta=0.0": 0, "symmetric, delta=0.5": 0, "symmetric, delta=1.0": 0, "symmetric, delta=2.0": 0, "one distant GCM, L=50": 2}
-DESIGN_LABELS = {"spread": "Spread", "hot_model": "Hot model", "large_ensemble": "Large ensemble"}
-FIXED_DESIGNS = {"spread": [3, 5, 10, 20, 50], "hot_model": [5, 10, 20, 50], "large_ensemble": [5, 10, 20, 50]}
+CONFIG_L = {
+    "symmetric, delta=0.0": 3,
+    "symmetric, delta=0.5": 3,
+    "symmetric, delta=1.0": 3,
+    "symmetric, delta=2.0": 3,
+    "one distant GCM, L=50": 50,
+}
+CONFIG_MU = {
+    "symmetric, delta=0.0": 0,
+    "symmetric, delta=0.5": 0,
+    "symmetric, delta=1.0": 0,
+    "symmetric, delta=2.0": 0,
+    "one distant GCM, L=50": 2,
+}
+DESIGN_LABELS = {
+    "spread": "Spread",
+    "hot_model": "Hot model",
+    "large_ensemble": "Large ensemble",
+}
+FIXED_DESIGNS = {
+    "spread": [3, 5, 10, 20, 50],
+    "hot_model": [5, 10, 20, 50],
+    "large_ensemble": [5, 10, 20, 50],
+}
 RANDOM_L = [3, 5, 10, 20]
 DAILY_DEATHS = [20, 150]
 ALPHAS = [0.05, 0.10, 0.34]
 AGE_LABELS = {"00_74": r"$<75$ years", "75plus": r"$\geq 75$ years", "total": "Total"}
-PERIOD_LABELS = {"gwl": r"$2\,^{\circ}\mathrm{C}$ warming level", "endcentury": "2079--2099"}
+PERIOD_LABELS = {
+    "gwl": r"$2\,^{\circ}\mathrm{C}$ warming level",
+    "endcentury": "2079--2099",
+}
 
 
 def f3(x):
@@ -74,8 +97,14 @@ def table_exact_configurations():
             cov_mu = cov_eci = ratio = None
         else:
             r = df[df["configuration"] == key].iloc[0]
-            cov_mu, cov_eci, ratio = r["coverage_mu"], r["coverage_eci"], r["width_ratio"]
-        lines.append(f"{label} & {CONFIG_L[key]} & {CONFIG_MU[key]} & {f3(cov_mu)} & {f3(cov_eci)} & {f3(ratio)} \\\\")
+            cov_mu, cov_eci, ratio = (
+                r["coverage_mu"],
+                r["coverage_eci"],
+                r["width_ratio"],
+            )
+        lines.append(
+            f"{label} & {CONFIG_L[key]} & {CONFIG_MU[key]} & {f3(cov_mu)} & {f3(cov_eci)} & {f3(ratio)} \\\\"
+        )
     lines += [r"\bottomrule", r"\end{tabular}"]
     write("exact_configurations.tex", lines)
 
@@ -88,7 +117,14 @@ def table_heterogeneous_infimum():
         num = [TBD] * len(Ls)
         ref = [f3(max(0.0, 1 - L * 0.025)) for L in Ls]
     else:
-        num = [f3(float(df.loc[df["L"] == L, "numerical_minimum"].iloc[0])) if (df["L"] == L).any() else TBD for L in Ls]
+        num = [
+            (
+                f3(float(df.loc[df["L"] == L, "numerical_minimum"].iloc[0]))
+                if (df["L"] == L).any()
+                else TBD
+            )
+            for L in Ls
+        ]
         ref = [f3(max(0.0, 1 - L * 0.025)) for L in Ls]
     lines = [
         r"\begin{tabular}{l" + "c" * len(Ls) + "}",
@@ -162,11 +198,42 @@ def table_projection_fixed(s, D):
             cells = []
             for a in ALPHAS:
                 for m in ["eci", "mu"]:
-                    r = get(s, ensemble="fixed", daily_deaths=D, design=design, L=L, alpha=a, method=m, target="mu_L")
+                    r = get(
+                        s,
+                        ensemble="fixed",
+                        daily_deaths=D,
+                        design=design,
+                        L=L,
+                        alpha=a,
+                        method=m,
+                        target="mu_L",
+                    )
                     cells.append(f3(val(r, "coverage")))
-            re = get(s, ensemble="fixed", daily_deaths=D, design=design, L=L, alpha=0.05, method="eci", target="mu_L")
-            rm = get(s, ensemble="fixed", daily_deaths=D, design=design, L=L, alpha=0.05, method="mu", target="mu_L")
-            ratio = None if re is None or rm is None else float(re["median_width"] / rm["median_width"])
+            re = get(
+                s,
+                ensemble="fixed",
+                daily_deaths=D,
+                design=design,
+                L=L,
+                alpha=0.05,
+                method="eci",
+                target="mu_L",
+            )
+            rm = get(
+                s,
+                ensemble="fixed",
+                daily_deaths=D,
+                design=design,
+                L=L,
+                alpha=0.05,
+                method="mu",
+                target="mu_L",
+            )
+            ratio = (
+                None
+                if re is None or rm is None
+                else float(re["median_width"] / rm["median_width"])
+            )
             lab = DESIGN_LABELS[design] if i == 0 else ""
             lines.append(f"{lab} & {L} & " + " & ".join(cells) + f" & {f2(ratio)} \\\\")
     lines += [r"\bottomrule", r"\end{tabular}"]
@@ -191,7 +258,16 @@ def table_projection_hs(s):
             cells = []
             for D in DAILY_DEATHS:
                 for a in ALPHAS:
-                    r = get(s, ensemble="fixed", daily_deaths=D, design=design, L=L, alpha=a, method="eci", target="H_s")
+                    r = get(
+                        s,
+                        ensemble="fixed",
+                        daily_deaths=D,
+                        design=design,
+                        L=L,
+                        alpha=a,
+                        method="eci",
+                        target="H_s",
+                    )
                     cells.append(f3(val(r, "coverage")))
             lab = DESIGN_LABELS[design] if i == 0 else ""
             lines.append(f"{lab} & {L} & " + " & ".join(cells) + r" \\")
@@ -214,12 +290,62 @@ def table_projection_random(s, alpha, name):
         for i, L in enumerate(RANDOM_L):
             cells = []
             for m in ["eci", "mu", "re_t", "re_sim"]:
-                cells.append(f3(val(get(s, ensemble="random", daily_deaths=D, L=L, alpha=alpha, method=m, target="mu_inf"), "coverage")))
+                cells.append(
+                    f3(
+                        val(
+                            get(
+                                s,
+                                ensemble="random",
+                                daily_deaths=D,
+                                L=L,
+                                alpha=alpha,
+                                method=m,
+                                target="mu_inf",
+                            ),
+                            "coverage",
+                        )
+                    )
+                )
             for m in ["eci", "pi_new"]:
-                cells.append(f3(val(get(s, ensemble="random", daily_deaths=D, L=L, alpha=alpha, method=m, target="H_new"), "coverage")))
-            rt = get(s, ensemble="random", daily_deaths=D, L=L, alpha=alpha, method="re_t", target="mu_inf")
-            re = get(s, ensemble="random", daily_deaths=D, L=L, alpha=alpha, method="eci", target="mu_inf")
-            ratio = None if rt is None or re is None else float(rt["median_width"] / re["median_width"])
+                cells.append(
+                    f3(
+                        val(
+                            get(
+                                s,
+                                ensemble="random",
+                                daily_deaths=D,
+                                L=L,
+                                alpha=alpha,
+                                method=m,
+                                target="H_new",
+                            ),
+                            "coverage",
+                        )
+                    )
+                )
+            rt = get(
+                s,
+                ensemble="random",
+                daily_deaths=D,
+                L=L,
+                alpha=alpha,
+                method="re_t",
+                target="mu_inf",
+            )
+            re = get(
+                s,
+                ensemble="random",
+                daily_deaths=D,
+                L=L,
+                alpha=alpha,
+                method="eci",
+                target="mu_inf",
+            )
+            ratio = (
+                None
+                if rt is None or re is None
+                else float(rt["median_width"] / re["median_width"])
+            )
             lab = str(D) if i == 0 else ""
             lines.append(f"{lab} & {L} & " + " & ".join(cells) + f" & {f2(ratio)} \\\\")
     lines += [r"\bottomrule", r"\end{tabular}"]
@@ -250,12 +376,18 @@ def table_reanalysis():
             for k, a in enumerate([0.05, 0.34]):
                 r = None
                 if df is not None:
-                    sub = df[(df["aggregation"] == period) & (df["age_group"] == age) & np.isclose(df["alpha"], a)]
+                    sub = df[
+                        (df["aggregation"] == period)
+                        & (df["age_group"] == age)
+                        & np.isclose(df["alpha"], a)
+                    ]
                     r = None if sub.empty else sub.iloc[0]
                 per = PERIOD_LABELS[period] if (i == 0 and k == 0) else ""
                 agl = AGE_LABELS[age] if k == 0 else ""
                 fit = TBD if r is None else f"{r['fit']:.0f}"
-                lines.append(f"{per} & {agl} & {1 - a:.2f} & {fit} & {iv(r, 'eci')} & {iv(r, 'mu')} & {iv(r, 're_t')} \\\\")
+                lines.append(
+                    f"{per} & {agl} & {1 - a:.2f} & {fit} & {iv(r, 'eci')} & {iv(r, 'mu')} & {iv(r, 're_t')} \\\\"
+                )
     lines += [r"\bottomrule", r"\end{tabular}"]
     write("reanalysis_periods.tex", lines)
 

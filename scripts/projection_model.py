@@ -36,8 +36,15 @@ EPI = {
     "HEAT_COEF": 0.0045,  # f(T) = HEAT_COEF (T - T_ref)^2 above the reference temperature (target shape)
     "SEASONAL_LOG_RR": 0.08,  # amplitude of the seasonal term of the log-mean of deaths
     "GAMMA_SHAPE": 50.0,  # shape of the gamma frailty (overdispersion)
-    "KNOT_PERCENTILES": [10.0, 75.0, 90.0],  # interior knots (percentiles of the climatology)
-    "BOUNDARY_PERCENTILES": [0.1, 99.9],  # boundary knots (percentiles of the climatology)
+    "KNOT_PERCENTILES": [
+        10.0,
+        75.0,
+        90.0,
+    ],  # interior knots (percentiles of the climatology)
+    "BOUNDARY_PERCENTILES": [
+        0.1,
+        99.9,
+    ],  # boundary knots (percentiles of the climatology)
     "N_HARMONICS": 3,  # harmonic terms in the fitted model
     "TEMP_CENTER": 15.0,  # temperature is scaled as (T - TEMP_CENTER) / TEMP_SCALE in the basis
     "TEMP_SCALE": 10.0,
@@ -59,13 +66,18 @@ def simulate_temperature(n_series, n_days, rng, warming=None, summer_amplificati
     doy = np.arange(n_days) % 365
     season = np.sin(2 * np.pi * (doy - CLIMATE["PHASE_DAY"]) / 365)
     phi = CLIMATE["AR_COEF"]
-    innov = rng.normal(0.0, CLIMATE["AR_SD"] * np.sqrt(1 - phi**2), size=(n_series, n_days))
+    innov = rng.normal(
+        0.0, CLIMATE["AR_SD"] * np.sqrt(1 - phi**2), size=(n_series, n_days)
+    )
     innov[:, 0] = rng.normal(0.0, CLIMATE["AR_SD"], size=n_series)  # stationary start
     dev = lfilter([1.0], [1.0, -phi], innov, axis=1)
     temp = CLIMATE["MEAN"] + CLIMATE["AMPLITUDE"] * season[None, :] + dev
     if warming is not None:
         warming = np.asarray(warming, dtype=float)[:, None]
-        temp = temp + warming * (1 + summer_amplification * np.clip(season, 0, None))[None, :]
+        temp = (
+            temp
+            + warming * (1 + summer_amplification * np.clip(season, 0, None))[None, :]
+        )
     return temp
 
 
@@ -90,19 +102,27 @@ def ns_basis(temp, knots):
     K = kn.size
 
     def d(k):
-        return (np.clip(x - kn[k], 0, None) ** 3 - np.clip(x - kn[K - 1], 0, None) ** 3) / (kn[K - 1] - kn[k])
+        return (
+            np.clip(x - kn[k], 0, None) ** 3 - np.clip(x - kn[K - 1], 0, None) ** 3
+        ) / (kn[K - 1] - kn[k])
 
     cols = [x] + [d(k) - d(K - 2) for k in range(K - 2)]
     return np.stack(cols, axis=-1)
 
 
 def centered_basis(temp, knots):
-    return ns_basis(temp, knots) - ns_basis(np.array([EPI["REFERENCE_TEMPERATURE"]]), knots)
+    return ns_basis(temp, knots) - ns_basis(
+        np.array([EPI["REFERENCE_TEMPERATURE"]]), knots
+    )
 
 
 def target_shape(temp):
     t_ref = EPI["REFERENCE_TEMPERATURE"]
-    return np.where(temp < t_ref, EPI["COLD_COEF"] * (t_ref - temp) ** 2, EPI["HEAT_COEF"] * (temp - t_ref) ** 2)
+    return np.where(
+        temp < t_ref,
+        EPI["COLD_COEF"] * (t_ref - temp) ** 2,
+        EPI["HEAT_COEF"] * (temp - t_ref) ** 2,
+    )
 
 
 def true_coefficients(knots):
@@ -121,11 +141,19 @@ def simulate_epi_data(n_years, daily_deaths, theta0, knots, rng):
     t = np.arange(n)
     doy = t % 365
     B = centered_basis(temp, knots)
-    log_mu = np.log(daily_deaths) + EPI["SEASONAL_LOG_RR"] * np.cos(2 * np.pi * doy / 365) + B @ theta0
+    log_mu = (
+        np.log(daily_deaths)
+        + EPI["SEASONAL_LOG_RR"] * np.cos(2 * np.pi * doy / 365)
+        + B @ theta0
+    )
     frailty = rng.gamma(EPI["GAMMA_SHAPE"], 1.0 / EPI["GAMMA_SHAPE"], size=n)
     y = rng.poisson(np.exp(log_mu) * frailty)
     harmonics = np.column_stack(
-        [f(2 * np.pi * k * doy / 365) for k in range(1, EPI["N_HARMONICS"] + 1) for f in (np.sin, np.cos)]
+        [
+            f(2 * np.pi * k * doy / 365)
+            for k in range(1, EPI["N_HARMONICS"] + 1)
+            for f in (np.sin, np.cos)
+        ]
     )
     dow = np.eye(7)[t % 7][:, 1:]
     X = np.column_stack([np.ones(n), B, harmonics, dow])
