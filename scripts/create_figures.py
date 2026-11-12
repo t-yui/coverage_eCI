@@ -18,6 +18,8 @@ CONFIG = {
     "EXACT_DIR": ROOT / "results_exact",
     "REANALYSIS_DIR": ROOT / "results_reanalysis",
     "OUTPUT_DIR": ROOT / "results_for_paper" / "images",
+    # number of GCMs in the panel for the population mean in the figure of the exact coverage
+    "POPULATION_PANEL_L": 3,
 }
 
 plt.rcParams.update(
@@ -50,7 +52,9 @@ def panel_title(ax, text):
 def figure_exact():
     d = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "distant_gcm.csv")
     h = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "heterogeneous.csv")
-    fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.6), constrained_layout=True)
+    sp = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "superpopulation.csv")
+    fig, axes = plt.subplots(2, 2, figsize=(7.2, 5.4), constrained_layout=True)
+    axes = axes.ravel()
     for ax, alpha, title in zip(
         axes[:2],
         [0.05, 0.34],
@@ -72,11 +76,11 @@ def figure_exact():
             )
         ax.axhline(1 - alpha, color=INK_SECONDARY, lw=0.8, ls=":")
         ax.set_xlabel(r"$\beta$")
+        ax.set_ylabel(r"Coverage of $I_{\mathrm{eCI}}$ for $\mu_L(\theta_0)$")
         ax.set_ylim(-0.02, 1.02)
         style(ax)
         panel_title(ax, title)
         ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
-    axes[0].set_ylabel(r"Coverage of $I_{\mathrm{eCI}}$ for $\mu_L(\theta_0)$")
     ax = axes[2]
     for k, L in enumerate(sorted(h["L"].unique())):
         s = h[h["L"] == L]
@@ -90,9 +94,31 @@ def figure_exact():
         )
     ax.axhline(0.95, color=INK_SECONDARY, lw=0.8, ls=":")
     ax.set_xlabel(r"$\eta$")
+    ax.set_ylabel(r"Coverage of $I_{\mathrm{eCI}}$ for $\mu_L(\theta_0)$")
     ax.set_ylim(0.48, 1.01)
     style(ax)
     panel_title(ax, "c) Differences depending\non the coefficient, $1-\\alpha=0.95$")
+    ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
+    ax = axes[3]
+    L = CONFIG["POPULATION_PANEL_L"]
+    sub = sp[(sp["L"] == L) & (sp["rho"] > 0)]
+    methods = [
+        ("coverage_eci", r"$I_{\mathrm{eCI}}$"),
+        ("coverage_mu", r"$I_{\mu}$"),
+        ("coverage_re_t", r"$I_{\mathrm{RE},t}$"),
+        ("coverage_re_sim", r"$I_{\mathrm{RE,sim}}$"),
+    ]
+    for k, (col, lab) in enumerate(methods):
+        ax.plot(
+            sub["rho"], sub[col], color=PALETTE[k], ls=LINESTYLES[k], lw=1.4, label=lab
+        )
+    ax.axhline(0.95, color=INK_SECONDARY, lw=0.8, ls=":")
+    ax.set_xscale("log")
+    ax.set_xlabel(r"$\tau^2 / V$")
+    ax.set_ylabel(r"Coverage for $\mu_{\infty}(\theta_0)$")
+    ax.set_ylim(0.4, 1.01)
+    style(ax)
+    panel_title(ax, f"d) Population mean, $L={L}$\n$1-\\alpha=0.95$")
     ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
     out = Path(CONFIG["OUTPUT_DIR"])
     out.mkdir(parents=True, exist_ok=True)

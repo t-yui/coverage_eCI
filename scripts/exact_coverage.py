@@ -7,6 +7,7 @@ Exact (J -> infinity) coverage computations under the linear Gaussian model:
   - a configuration with one distant GCM, as a function of its distance
   - differences among the GCM-specific impacts depending on the coefficient
   - the impact under a GCM selected uniformly at random, with differences depending on the coefficient
+  - the number of GCMs equal to 2 / alpha, with differences depending on the coefficient
   - the super-population mean under the normal random-effects model
 """
 
@@ -55,9 +56,17 @@ CONFIG = {
     # numerical infimum with differences depending on the coefficient
     "INF_L_LIST": [2, 3, 5, 10, 20, 40],
     "INF_N_START": 20,
-    # impact under a GCM selected uniformly at random: H_l(theta_0) and c_l sigma
-    "RANDOM_GCM_EXAMPLE": {"H0": [0.0, 0.0, 3.0], "SD": [1.0, 1.0, 10.0]},
+    # impact under a GCM selected uniformly at random: H_l(theta_0) = b_l and c_l (theta_0 = 0)
+    "RANDOM_GCM_EXAMPLE": {"B": [0.0, 0.0, 3.0], "C": [1.0, 1.0, 10.0]},
     "RANDOM_GCM_ALPHA_LIST": [0.05, 0.10, 0.34],
+    # values of sigma for the examples (sigma -> 0 corresponds to increasing sample size)
+    "EXAMPLE_SIGMA_LIST": [1.0, 0.1, 0.01],
+    # L = 2 / alpha with differences depending on the coefficient: b_l and c_l (theta_0 = 0)
+    "BOUNDARY_EXAMPLE": {
+        "ALPHA": 0.05,
+        "B": [-60.0] + [1.5] * 39,
+        "C": [100.0] + [1.0] * 39,
+    },
     # super-population mean
     "SUPERPOP_L_LIST": [3, 5, 10, 20],
     "RHO_GRID": [0.0] + list(np.logspace(-2, 2, 33)),
@@ -177,18 +186,43 @@ def curves_superpopulation(alpha, rng):
 
 def table_random_gcm():
     ex = CONFIG["RANDOM_GCM_EXAMPLE"]
+    b, c = np.array(ex["B"]), np.array(ex["C"])
     rows = []
-    for alpha in CONFIG["RANDOM_GCM_ALPHA_LIST"]:
-        rows.append(
-            {
-                "H0": " ".join(f"{v:g}" for v in ex["H0"]),
-                "sd": " ".join(f"{v:g}" for v in ex["SD"]),
-                "level": 1 - alpha,
-                "coverage_eci_random_gcm": exact_coverage_eci_random_gcm(
-                    ex["H0"], ex["SD"], alpha
-                ),
-            }
-        )
+    for sigma in CONFIG["EXAMPLE_SIGMA_LIST"]:
+        for alpha in CONFIG["RANDOM_GCM_ALPHA_LIST"]:
+            rows.append(
+                {
+                    "sigma": sigma,
+                    "level": 1 - alpha,
+                    "coverage_eci_random_gcm": exact_coverage_eci_random_gcm(
+                        b, c * sigma, alpha
+                    ),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def table_boundary():
+    """coverage of I_eCI for mu_L(theta_0) with L = 2 / alpha"""
+    ex = CONFIG["BOUNDARY_EXAMPLE"]
+    alpha = ex["ALPHA"]
+    b = np.array(ex["B"])
+    rows = []
+    for label, c in [
+        ("differences depending on the coefficient", np.array(ex["C"])),
+        ("location-shift model", np.ones_like(b)),
+    ]:
+        for sigma in CONFIG["EXAMPLE_SIGMA_LIST"]:
+            e = (b - b.mean()) / (c * sigma)
+            rows.append(
+                {
+                    "case": label,
+                    "L": b.size,
+                    "level": 1 - alpha,
+                    "sigma": sigma,
+                    "coverage_eci": float(exact_coverage_eci(e, alpha)[0]),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -216,6 +250,11 @@ def main():
     tab = table_random_gcm()
     print(tab.to_string(index=False))
     tab.to_csv(out / "random_gcm_heterogeneous.csv", index=False)
+
+    print("L = 2 / alpha", flush=True)
+    tab = table_boundary()
+    print(tab.to_string(index=False))
+    tab.to_csv(out / "boundary_example.csv", index=False)
 
     print("super-population mean", flush=True)
     curves_superpopulation(alpha, rng).to_csv(out / "superpopulation.csv", index=False)
