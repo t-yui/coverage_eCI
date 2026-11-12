@@ -131,7 +131,7 @@ def table_heterogeneous_infimum():
         r"\toprule",
         r"$L$ & " + head + r" \\",
         r"\midrule",
-        r"Numerical minimum of the coverage & " + " & ".join(num) + r" \\",
+        r"Smallest value of the coverage obtained & " + " & ".join(num) + r" \\",
         r"$\max(0, 1-L\alpha/2)$ & " + " & ".join(ref) + r" \\",
         r"\bottomrule",
         r"\end{tabular}",

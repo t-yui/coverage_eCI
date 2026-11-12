@@ -57,7 +57,7 @@ CONFIG = {
     "INF_L_LIST": [2, 3, 5, 10, 20, 40],
     "INF_N_START": 20,
     # impact under a GCM selected uniformly at random: H_l(theta_0) = b_l and c_l (theta_0 = 0)
-    "RANDOM_GCM_EXAMPLE": {"B": [0.0, 0.0, 3.0], "C": [1.0, 1.0, 10.0]},
+    "RANDOM_GCM_EXAMPLE": {"B": [0.0, 0.5, 3.0], "C": [1.0, 1.0, 10.0]},
     "RANDOM_GCM_ALPHA_LIST": [0.05, 0.10, 0.34],
     # values of sigma for the examples (sigma -> 0 corresponds to increasing sample size)
     "EXAMPLE_SIGMA_LIST": [1.0, 0.1, 0.01],
