@@ -7,8 +7,9 @@
 # allow a specified file
 !*.py
 
+!run_all_experiments.sh
+!requirements.txt
 !.gitignore
 !.gitkeep
-!requirements.txt
 !LICENSE
 !README.md
