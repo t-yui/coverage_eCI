@@ -22,7 +22,16 @@ QUANTILE_METHOD = "linear"  # identical to type 7 in R
 
 # palette for figures (categorical slots in fixed order)
 
-PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
+PALETTE = [
+    "#2a78d6",
+    "#eb6834",
+    "#1baf7a",
+    "#eda100",
+    "#e87ba4",
+    "#008300",
+    "#6250d6",
+    "#e34948",
+]
 LINESTYLES = ["-", "--", "-.", ":", (0, (5, 1, 1, 1, 1, 1))]
 INK = "#0b0b0b"
 INK_SECONDARY = "#52514e"
@@ -55,12 +64,14 @@ def interval_re_t(H_hat, H_draws, alpha):
     L = H_hat.size
     mu_hat = H_hat.mean()
     v_hat = np.var(np.asarray(H_draws).mean(axis=1), ddof=1)
-    half = t_dist.ppf(1 - alpha / 2, L - 1) * np.sqrt(v_hat + between_gcm_variance(H_hat) / L)
+    half = t_dist.ppf(1 - alpha / 2, L - 1) * np.sqrt(
+        v_hat + between_gcm_variance(H_hat) / L
+    )
     return np.array([mu_hat - half, mu_hat + half])
 
 
 def interval_re_sim(H_hat, H_draws, alpha, t_draws):
-    """quantiles of mu^(j) + (S / L^{1/2}) T^(j) with T^(j) ~ t_{L-1}"""
+    """quantiles of mu^(j) + (S / L^{1/2}) U^(j) with U^(j) ~ t_{L-1}"""
     H_hat = np.asarray(H_hat)
     L = H_hat.size
     mu_draws = np.asarray(H_draws).mean(axis=1)
@@ -74,7 +85,9 @@ def interval_pi_new(H_hat, H_draws, alpha):
     L = H_hat.size
     mu_hat = H_hat.mean()
     v_hat = np.var(np.asarray(H_draws).mean(axis=1), ddof=1)
-    half = t_dist.ppf(1 - alpha / 2, L - 1) * np.sqrt(v_hat + between_gcm_variance(H_hat) * (1 + 1 / L))
+    half = t_dist.ppf(1 - alpha / 2, L - 1) * np.sqrt(
+        v_hat + between_gcm_variance(H_hat) * (1 + 1 / L)
+    )
     return np.array([mu_hat - half, mu_hat + half])
 
 
@@ -131,8 +144,31 @@ def exact_coverage_eci(e, alpha):
     return norm.cdf(q_hi) - norm.cdf(q_lo)
 
 
+def exact_coverage_eci_random_gcm(H0, sd, alpha):
+    """
+    exact coverage of I_eCI for H_s(theta_0) under the linear Gaussian model
+    with J -> infinity, where s is uniform on {1..L}
+
+    H0 : array (L,), the impacts H_l(theta_0)
+    sd : array (L,), the standard deviations c_l sigma
+
+    With theta_hat = theta_0 + sigma X, the mixture distribution function at
+    H_k(theta_0) is g_k(X) = L^{-1} sum_l Phi(d_kl - X) with
+    d_kl = {H_k(theta_0) - H_l(theta_0)} / (c_l sigma), which is decreasing in X,
+    so that the coverage given s = k is Phi(x_hi) - Phi(x_lo) with
+    g_k(x_hi) = alpha / 2 and g_k(x_lo) = 1 - alpha / 2.
+    """
+    H0 = np.asarray(H0, dtype=float)
+    sd = np.asarray(sd, dtype=float)
+    d = (H0[:, None] - H0[None, :]) / sd[None, :]  # (k, l)
+    # g_k(X) <= p if and only if X >= -q_p(-d_k), where q_p is the mixture quantile
+    x_hi = -mixture_quantile(alpha / 2, -d)
+    x_lo = -mixture_quantile(1 - alpha / 2, -d)
+    return float(np.mean(norm.cdf(x_hi) - norm.cdf(x_lo)))
+
+
 def exact_width_ratio_common(e, alpha):
-    """width of I_eCI divided by that of I_mu under a common sensitivity"""
+    """width of I_eCI divided by that of I_mu in the location-shift model (c_1 = ... = c_L)"""
     q_lo = mixture_quantile(alpha / 2, e)
     q_hi = mixture_quantile(1 - alpha / 2, e)
     return (q_hi - q_lo) / (2 * norm.ppf(1 - alpha / 2))
@@ -182,7 +218,9 @@ def exact_coverage_re_sim(L, omega, alpha, n_w=400, n_t=2000, n_iter=80):
         hi = np.full(n_w, 50.0)
         for _ in range(n_iter):
             mid = 0.5 * (lo + hi)
-            cdf = norm.cdf((mid[:, None] - c[:, None] * t_nodes[None, :]) / s).mean(axis=1)
+            cdf = norm.cdf((mid[:, None] - c[:, None] * t_nodes[None, :]) / s).mean(
+                axis=1
+            )
             below = cdf < p
             lo = np.where(below, mid, lo)
             hi = np.where(below, hi, mid)

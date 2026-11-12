@@ -51,11 +51,25 @@ def figure_exact():
     d = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "distant_gcm.csv")
     h = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "heterogeneous.csv")
     fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.6), constrained_layout=True)
-    for ax, alpha, title in zip(axes[:2], [0.05, 0.34], ["a) Common, $1-\\alpha=0.95$", "b) Common, $1-\\alpha=0.66$"]):
+    for ax, alpha, title in zip(
+        axes[:2],
+        [0.05, 0.34],
+        [
+            "a) Location-shift model\n$1-\\alpha=0.95$",
+            "b) Location-shift model\n$1-\\alpha=0.66$",
+        ],
+    ):
         sub = d[np.isclose(d["alpha"], alpha)]
         for k, L in enumerate(sorted(sub["L"].unique())):
             s = sub[sub["L"] == L]
-            ax.plot(s["beta"], s["coverage_eci"], color=PALETTE[k], ls=LINESTYLES[k], lw=1.4, label=f"$L={L}$")
+            ax.plot(
+                s["beta"],
+                s["coverage_eci"],
+                color=PALETTE[k],
+                ls=LINESTYLES[k],
+                lw=1.4,
+                label=f"$L={L}$",
+            )
         ax.axhline(1 - alpha, color=INK_SECONDARY, lw=0.8, ls=":")
         ax.set_xlabel(r"$\beta$")
         ax.set_ylim(-0.02, 1.02)
@@ -66,12 +80,19 @@ def figure_exact():
     ax = axes[2]
     for k, L in enumerate(sorted(h["L"].unique())):
         s = h[h["L"] == L]
-        ax.plot(s["eta"], s["coverage_eci"], color=PALETTE[k], ls=LINESTYLES[k], lw=1.4, label=f"$L={L}$")
+        ax.plot(
+            s["eta"],
+            s["coverage_eci"],
+            color=PALETTE[k],
+            ls=LINESTYLES[k],
+            lw=1.4,
+            label=f"$L={L}$",
+        )
     ax.axhline(0.95, color=INK_SECONDARY, lw=0.8, ls=":")
     ax.set_xlabel(r"$\eta$")
     ax.set_ylim(0.48, 1.01)
     style(ax)
-    panel_title(ax, "c) Heterogeneous, $1-\\alpha=0.95$")
+    panel_title(ax, "c) Differences depending\non the coefficient, $1-\\alpha=0.95$")
     ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
     out = Path(CONFIG["OUTPUT_DIR"])
     out.mkdir(parents=True, exist_ok=True)
@@ -82,7 +103,14 @@ def figure_exact():
 def figure_superpopulation():
     s = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "superpopulation.csv")
     Ls = sorted(s["L"].unique())
-    fig, axes = plt.subplots(1, len(Ls), figsize=(7.2, 2.4), constrained_layout=True, sharey=True, squeeze=False)
+    fig, axes = plt.subplots(
+        1,
+        len(Ls),
+        figsize=(7.2, 2.4),
+        constrained_layout=True,
+        sharey=True,
+        squeeze=False,
+    )
     axes = axes[0]
     methods = [
         ("coverage_eci", r"$I_{\mathrm{eCI}}$"),
@@ -93,7 +121,14 @@ def figure_superpopulation():
     for j, (ax, L) in enumerate(zip(axes, Ls)):
         sub = s[(s["L"] == L) & (s["rho"] > 0)]
         for k, (col, lab) in enumerate(methods):
-            ax.plot(sub["rho"], sub[col], color=PALETTE[k], ls=LINESTYLES[k], lw=1.4, label=lab)
+            ax.plot(
+                sub["rho"],
+                sub[col],
+                color=PALETTE[k],
+                ls=LINESTYLES[k],
+                lw=1.4,
+                label=lab,
+            )
         ax.axhline(0.95, color=INK_SECONDARY, lw=0.8, ls=":")
         ax.set_xscale("log")
         ax.set_xlabel(r"$\tau^2 / V$")
@@ -117,14 +152,34 @@ def figure_reanalysis():
     dec["time"] = dec["time"].astype(int)
     fig = plt.figure(figsize=(7.2, 5.0), constrained_layout=True)
     gs = fig.add_gridspec(2, 3)
-    titles = {"total": "a) Total", "00_74": r"b) $<75$ years", "75plus": r"c) $\geq 75$ years"}
+    titles = {
+        "total": "a) Total",
+        "00_74": r"b) $<75$ years",
+        "75plus": r"c) $\geq 75$ years",
+    }
     pos = {"total": (0, 0), "00_74": (0, 1), "75plus": (0, 2)}
     col = PALETTE[0]
     for age in ["total", "00_74", "75plus"]:
         ax = fig.add_subplot(gs[pos[age]])
         s = dec[dec["age_group"] == age].sort_values("time")
-        ax.fill_between(s["time"], s["eci_low"], s["eci_high"], color=col, alpha=0.18, lw=0, label=r"$I_{\mathrm{eCI}}$")
-        ax.fill_between(s["time"], s["mu_low"], s["mu_high"], color=col, alpha=0.45, lw=0, label=r"$I_{\mu}$")
+        ax.fill_between(
+            s["time"],
+            s["eci_low"],
+            s["eci_high"],
+            color=col,
+            alpha=0.18,
+            lw=0,
+            label=r"$I_{\mathrm{eCI}}$",
+        )
+        ax.fill_between(
+            s["time"],
+            s["mu_low"],
+            s["mu_high"],
+            color=col,
+            alpha=0.45,
+            lw=0,
+            label=r"$I_{\mu}$",
+        )
         ax.plot(s["time"], s["fit"], color=INK, lw=1.2, label=r"$\widehat{\mu}$")
         ax.set_xlabel("Decade")
         ax.set_ylabel("Annual heat-related deaths")
@@ -136,14 +191,40 @@ def figure_reanalysis():
     per = r[r["aggregation"] != "decade"]
     labels, x = [], 0
     ages = ["total", "00_74", "75plus"]
-    for period, plabel in [("gwl", r"$2\,^{\circ}$C warming level"), ("endcentury", "2079--2099")]:
+    for period, plabel in [
+        ("gwl", r"$2\,^{\circ}$C warming level"),
+        ("endcentury", "2079--2099"),
+    ]:
         for age in ages:
             s = per[(per["aggregation"] == period) & (per["age_group"] == age)].iloc[0]
-            for k, (m, lab) in enumerate([("eci", r"$I_{\mathrm{eCI}}$"), ("mu", r"$I_{\mu}$"), ("re_t", r"$I_{\mathrm{RE},t}$")]):
+            for k, (m, lab) in enumerate(
+                [
+                    ("eci", r"$I_{\mathrm{eCI}}$"),
+                    ("mu", r"$I_{\mu}$"),
+                    ("re_t", r"$I_{\mathrm{RE},t}$"),
+                ]
+            ):
                 xx = x + (k - 1) * 0.22
-                ax.plot([xx, xx], [s[f"{m}_low"], s[f"{m}_high"]], color=PALETTE[k], lw=2.0, solid_capstyle="round", label=lab if x == 0 else None)
-            ax.plot([x], [s["fit"]], "o", color=INK, ms=4, label=r"$\widehat{\mu}$" if x == 0 else None)
-            labels.append(f"{plabel.replace('$2', '$2').replace('warming level', 'WL')}\n" + {"total": "Total", "00_74": "<75", "75plus": "≥75"}[age])
+                ax.plot(
+                    [xx, xx],
+                    [s[f"{m}_low"], s[f"{m}_high"]],
+                    color=PALETTE[k],
+                    lw=2.0,
+                    solid_capstyle="round",
+                    label=lab if x == 0 else None,
+                )
+            ax.plot(
+                [x],
+                [s["fit"]],
+                "o",
+                color=INK,
+                ms=4,
+                label=r"$\widehat{\mu}$" if x == 0 else None,
+            )
+            labels.append(
+                f"{plabel.replace('$2', '$2').replace('warming level', 'WL')}\n"
+                + {"total": "Total", "00_74": "<75", "75plus": "≥75"}[age]
+            )
             x += 1
     ax.axhline(0, color=INK_SECONDARY, lw=0.6)
     ax.set_xticks(range(len(labels)))

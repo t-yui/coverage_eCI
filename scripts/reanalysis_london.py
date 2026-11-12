@@ -49,7 +49,9 @@ def load_inputs():
     params = load_rdata("indata/processed/study_parameters.RData")["study_param"]
     gcms = [str(g) for g in params["selected_gcms"]]
     ages = [str(a) for a in params["age_groups"]]
-    an_raw = load_rdata("outdata/file/03_calibrated_demographic_projections/attributable_number_ssp245.RData")["an"]
+    an_raw = load_rdata(
+        "outdata/file/03_calibrated_demographic_projections/attributable_number_ssp245.RData"
+    )["an"]
     an = {}
     for age in ages:
         an[age] = {}
@@ -59,21 +61,25 @@ def load_inputs():
             an[age][g] = pd.DataFrame(np.asarray(da.values, dtype=float), columns=cols)
     an["total"] = {g: sum(an[a][g] for a in ages) for g in gcms}
     years = (
-        load_rdata("outdata/file/03_calibrated_demographic_projections/data_proj_mort_spatialcal_tempcal_ssp2.RData")[
-            "proj_mort_ldn_daily"
-        ]["year"]
+        load_rdata(
+            "outdata/file/03_calibrated_demographic_projections/data_proj_mort_spatialcal_tempcal_ssp2.RData"
+        )["proj_mort_ldn_daily"]["year"]
         .astype(int)
         .to_numpy()
     )
-    gwl = load_rdata("indata/processed/data_global_warming_levels_ssp245.RData")["data_gwl"]
+    gwl = load_rdata("indata/processed/data_global_warming_levels_ssp245.RData")[
+        "data_gwl"
+    ]
     original = {
-        "gwl": load_rdata("outdata/file/04_health_impacts/heat_related_mortality_gwl_ssp245.RData")["an_gwl_summary_age"],
-        "endcentury": load_rdata("outdata/file/04_health_impacts/heat_related_mortality_endcentury_ssp245.RData")[
-            "an_endcentury_summary_age"
-        ],
-        "decade": load_rdata("outdata/file/04_health_impacts/heat_related_mortality_decades_ssp245.RData")[
-            "an_decade_summary_age"
-        ],
+        "gwl": load_rdata(
+            "outdata/file/04_health_impacts/heat_related_mortality_gwl_ssp245.RData"
+        )["an_gwl_summary_age"],
+        "endcentury": load_rdata(
+            "outdata/file/04_health_impacts/heat_related_mortality_endcentury_ssp245.RData"
+        )["an_endcentury_summary_age"],
+        "decade": load_rdata(
+            "outdata/file/04_health_impacts/heat_related_mortality_decades_ssp245.RData"
+        )["an_decade_summary_age"],
     }
     return gcms, an, years, gwl, original
 
@@ -82,7 +88,10 @@ def period_years(gwl, period, gcm):
     if period == "endcentury":
         y1, y2 = CONFIG["END_OF_CENTURY"]
     else:
-        row = gwl[(gwl["warming_level"].astype(str) == CONFIG["WARMING_LEVEL"]) & (gwl["gcm"].astype(str) == gcm)]
+        row = gwl[
+            (gwl["warming_level"].astype(str) == CONFIG["WARMING_LEVEL"])
+            & (gwl["gcm"].astype(str) == gcm)
+        ]
         if len(row) != 1:
             raise ValueError(f"could not identify the GWL window for {gcm}")
         y1, y2 = int(row["year1"].iloc[0]), int(row["year2"].iloc[0])
@@ -104,7 +113,9 @@ def summarize(sums_by_gcm, alpha):
 
 
 def ordered_columns(df):
-    sims = sorted([c for c in df.columns if c != "est"], key=lambda c: int(c.replace("sim", "")))
+    sims = sorted(
+        [c for c in df.columns if c != "est"], key=lambda c: int(c.replace("sim", ""))
+    )
     return ["est"] + sims
 
 
@@ -122,6 +133,7 @@ def main():
     print(f"GCMs: {gcms}; coefficient draws: {n_draws}", flush=True)
 
     rows = []
+    sd_rows = []
     # 21-year periods
     for period in ["gwl", "endcentury"]:
         for age in CONFIG["AGE_ORDER"]:
@@ -129,18 +141,46 @@ def main():
             for g in gcms:
                 y1, y2 = period_years(gwl, period, g)
                 df = an[age][g]
-                sums.append(df.loc[(years >= y1) & (years <= y2), ordered_columns(df)].sum(axis=0).to_numpy())
+                sums.append(
+                    df.loc[(years >= y1) & (years <= y2), ordered_columns(df)]
+                    .sum(axis=0)
+                    .to_numpy()
+                )
+            # standard deviation of the GCM-specific annual impact over the coefficient draws
+            for g, v in zip(gcms, sums):
+                sd_rows.append(
+                    {
+                        "time": period,
+                        "age_group": age,
+                        "gcm": g,
+                        "sd": np.std(v[1:], ddof=1) / CONFIG["PERIOD_YEARS"],
+                    }
+                )
             for alpha in CONFIG["ALPHA_LIST"]:
                 s = summarize(sums, alpha)
                 if alpha == 0.05:
                     ref = original[period][age]
                     validate(s["fit"], float(ref["fit"].iloc[0]), f"{period}/{age}/fit")
-                    validate(s["eci"][0], float(ref["low"].iloc[0]), f"{period}/{age}/low")
-                    validate(s["eci"][1], float(ref["high"].iloc[0]), f"{period}/{age}/high")
+                    validate(
+                        s["eci"][0], float(ref["low"].iloc[0]), f"{period}/{age}/low"
+                    )
+                    validate(
+                        s["eci"][1], float(ref["high"].iloc[0]), f"{period}/{age}/high"
+                    )
                 f = CONFIG["PERIOD_YEARS"]
                 rows.append(
-                    {"aggregation": period, "time": period, "age_group": age, "alpha": alpha, "fit": s["fit"] / f}
-                    | {f"{m}_{b}": s[m][i] / f for m in ["eci", "mu", "re_t"] for i, b in enumerate(["low", "high"])}
+                    {
+                        "aggregation": period,
+                        "time": period,
+                        "age_group": age,
+                        "alpha": alpha,
+                        "fit": s["fit"] / f,
+                    }
+                    | {
+                        f"{m}_{b}": s[m][i] / f
+                        for m in ["eci", "mu", "re_t"]
+                        for i, b in enumerate(["low", "high"])
+                    }
                 )
 
     # decades
@@ -150,22 +190,49 @@ def main():
         for dec in np.unique(decades):
             sel = decades == dec
             n_years = np.unique(years[sel]).size
-            sums = [an[age][g].loc[sel, ordered_columns(an[age][g])].sum(axis=0).to_numpy() for g in gcms]
+            sums = [
+                an[age][g].loc[sel, ordered_columns(an[age][g])].sum(axis=0).to_numpy()
+                for g in gcms
+            ]
             for alpha in CONFIG["ALPHA_LIST"]:
                 s = summarize(sums, alpha)
                 if alpha == 0.05:
                     r = ref[ref["time"].astype(int) == dec]
-                    validate(s["fit"], float(r["fit"].iloc[0]), f"decade {dec}/{age}/fit")
-                    validate(s["eci"][0], float(r["low"].iloc[0]), f"decade {dec}/{age}/low")
-                    validate(s["eci"][1], float(r["high"].iloc[0]), f"decade {dec}/{age}/high")
+                    validate(
+                        s["fit"], float(r["fit"].iloc[0]), f"decade {dec}/{age}/fit"
+                    )
+                    validate(
+                        s["eci"][0], float(r["low"].iloc[0]), f"decade {dec}/{age}/low"
+                    )
+                    validate(
+                        s["eci"][1],
+                        float(r["high"].iloc[0]),
+                        f"decade {dec}/{age}/high",
+                    )
                 rows.append(
-                    {"aggregation": "decade", "time": int(dec), "age_group": age, "alpha": alpha, "fit": s["fit"] / n_years}
-                    | {f"{m}_{b}": s[m][i] / n_years for m in ["eci", "mu", "re_t"] for i, b in enumerate(["low", "high"])}
+                    {
+                        "aggregation": "decade",
+                        "time": int(dec),
+                        "age_group": age,
+                        "alpha": alpha,
+                        "fit": s["fit"] / n_years,
+                    }
+                    | {
+                        f"{m}_{b}": s[m][i] / n_years
+                        for m in ["eci", "mu", "re_t"]
+                        for i, b in enumerate(["low", "high"])
+                    }
                 )
-    print("The point estimates and I_eCI agree with the saved summaries of the tutorial.", flush=True)
+    print(
+        "The point estimates and I_eCI agree with the saved summaries of the tutorial.",
+        flush=True,
+    )
     res = pd.DataFrame(rows)
     res.to_csv(out / "reanalysis_intervals.csv", index=False)
     print(res[res["aggregation"] != "decade"].round(1).to_string(index=False))
+    sd = pd.DataFrame(sd_rows)
+    sd.to_csv(out / "reanalysis_gcm_sd.csv", index=False)
+    print(sd.round(1).to_string(index=False))
 
 
 if __name__ == "__main__":

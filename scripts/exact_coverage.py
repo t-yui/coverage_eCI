@@ -3,9 +3,10 @@
 
 """
 Exact (J -> infinity) coverage computations under the linear Gaussian model:
-  - configurations of the GCM-specific impacts with a common sensitivity
+  - configurations of the GCM-specific impacts in the location-shift model (c_1 = ... = c_L)
   - a configuration with one distant GCM, as a function of its distance
-  - heterogeneous sensitivities
+  - differences among the GCM-specific impacts depending on the coefficient
+  - the impact under a GCM selected uniformly at random, with differences depending on the coefficient
   - the super-population mean under the normal random-effects model
 """
 
@@ -20,6 +21,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from eci_intervals import (
     exact_coverage_eci,
+    exact_coverage_eci_random_gcm,
     exact_width_ratio_common,
     exact_coverage_re_t,
     exact_coverage_re_sim,
@@ -31,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CONFIG = {
     "ALPHA": 0.05,
-    # configurations with a common sensitivity (standardized impacts)
+    # configurations in the location-shift model (standardized impacts)
     "CONFIGURATIONS": {
         "symmetric, delta=0.0": [-0.0, 0.0, 0.0],
         "symmetric, delta=0.5": [-0.5, 0.0, 0.5],
@@ -45,14 +47,17 @@ CONFIG = {
         0.34: {"L_LIST": [3, 5, 6, 10, 20], "BETA_MAX": 60.0},
     },
     "N_BETA": 601,
-    # heterogeneous sensitivities: e = (E1, -eta, ..., -eta)
+    # differences depending on the coefficient: e = (E1, -eta, ..., -eta)
     "HETERO_L_LIST": [2, 3, 5, 10, 20],
     "HETERO_E1": 0.01,
     "HETERO_ETA_MAX": 8.0,
     "N_ETA": 321,
-    # numerical infimum under heterogeneous sensitivities
+    # numerical infimum with differences depending on the coefficient
     "INF_L_LIST": [2, 3, 5, 10, 20, 40],
     "INF_N_START": 20,
+    # impact under a GCM selected uniformly at random: H_l(theta_0) and c_l sigma
+    "RANDOM_GCM_EXAMPLE": {"H0": [0.0, 0.0, 3.0], "SD": [1.0, 1.0, 10.0]},
+    "RANDOM_GCM_ALPHA_LIST": [0.05, 0.10, 0.34],
     # super-population mean
     "SUPERPOP_L_LIST": [3, 5, 10, 20],
     "RHO_GRID": [0.0] + list(np.logspace(-2, 2, 33)),
@@ -89,7 +94,10 @@ def curves_distant_gcm():
             b[:, -1] = betas
             e = b - b.mean(axis=1, keepdims=True)
             cov = exact_coverage_eci(e, alpha)
-            rows += [{"alpha": alpha, "L": L, "beta": be, "coverage_eci": c} for be, c in zip(betas, cov)]
+            rows += [
+                {"alpha": alpha, "L": L, "beta": be, "coverage_eci": c}
+                for be, c in zip(betas, cov)
+            ]
     return pd.DataFrame(rows)
 
 
@@ -100,7 +108,10 @@ def curves_heterogeneous(alpha):
         e = np.tile(-etas[:, None], (1, L))
         e[:, 0] = CONFIG["HETERO_E1"]
         cov = exact_coverage_eci(e, alpha)
-        rows += [{"alpha": alpha, "L": L, "eta": et, "coverage_eci": c} for et, c in zip(etas, cov)]
+        rows += [
+            {"alpha": alpha, "L": L, "eta": et, "coverage_eci": c}
+            for et, c in zip(etas, cov)
+        ]
     return pd.DataFrame(rows)
 
 
@@ -121,9 +132,21 @@ def infimum_heterogeneous(alpha, rng):
                 x0[0] = rng.uniform(0.0, 0.5)
             else:
                 x0 = rng.normal(0.0, rng.choice([1.0, 3.0, 10.0]), L)
-            res = minimize(objective, x0, method="Nelder-Mead", options={"maxiter": 3000, "xatol": 1e-7, "fatol": 1e-10})
+            res = minimize(
+                objective,
+                x0,
+                method="Nelder-Mead",
+                options={"maxiter": 3000, "xatol": 1e-7, "fatol": 1e-10},
+            )
             best = min(best, res.fun)
-        rows.append({"alpha": alpha, "L": L, "numerical_minimum": best, "one_minus_L_alpha_half": max(0.0, 1 - L * alpha / 2)})
+        rows.append(
+            {
+                "alpha": alpha,
+                "L": L,
+                "numerical_minimum": best,
+                "one_minus_L_alpha_half": max(0.0, 1 - L * alpha / 2),
+            }
+        )
         print(f"  L={L}: minimum={best:.4f}", flush=True)
     return pd.DataFrame(rows)
 
@@ -133,7 +156,9 @@ def curves_superpopulation(alpha, rng):
     for L in CONFIG["SUPERPOP_L_LIST"]:
         for rho in CONFIG["RHO_GRID"]:
             omega = (rho / L) / (1 + rho / L)
-            cov_eci, se_eci = coverage_eci_superpopulation(L, rho, alpha, CONFIG["N_MC_SUPERPOP"], rng)
+            cov_eci, se_eci = coverage_eci_superpopulation(
+                L, rho, alpha, CONFIG["N_MC_SUPERPOP"], rng
+            )
             rows.append(
                 {
                     "alpha": alpha,
@@ -150,13 +175,30 @@ def curves_superpopulation(alpha, rng):
     return pd.DataFrame(rows)
 
 
+def table_random_gcm():
+    ex = CONFIG["RANDOM_GCM_EXAMPLE"]
+    rows = []
+    for alpha in CONFIG["RANDOM_GCM_ALPHA_LIST"]:
+        rows.append(
+            {
+                "H0": " ".join(f"{v:g}" for v in ex["H0"]),
+                "sd": " ".join(f"{v:g}" for v in ex["SD"]),
+                "level": 1 - alpha,
+                "coverage_eci_random_gcm": exact_coverage_eci_random_gcm(
+                    ex["H0"], ex["SD"], alpha
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def main():
     out = Path(CONFIG["RESULT_DIR"])
     out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(CONFIG["RANDOM_STATE"])
     alpha = CONFIG["ALPHA"]
 
-    print("configurations with a common sensitivity", flush=True)
+    print("configurations in the location-shift model", flush=True)
     tab = table_configurations(alpha)
     print(tab.to_string(index=False))
     tab.to_csv(out / "configurations.csv", index=False)
@@ -164,9 +206,16 @@ def main():
     print("one distant GCM", flush=True)
     curves_distant_gcm().to_csv(out / "distant_gcm.csv", index=False)
 
-    print("heterogeneous sensitivities", flush=True)
+    print("differences depending on the coefficient", flush=True)
     curves_heterogeneous(alpha).to_csv(out / "heterogeneous.csv", index=False)
-    infimum_heterogeneous(alpha, rng).to_csv(out / "heterogeneous_infimum.csv", index=False)
+    infimum_heterogeneous(alpha, rng).to_csv(
+        out / "heterogeneous_infimum.csv", index=False
+    )
+
+    print("impact under a GCM selected uniformly at random", flush=True)
+    tab = table_random_gcm()
+    print(tab.to_string(index=False))
+    tab.to_csv(out / "random_gcm_heterogeneous.csv", index=False)
 
     print("super-population mean", flush=True)
     curves_superpopulation(alpha, rng).to_csv(out / "superpopulation.csv", index=False)
