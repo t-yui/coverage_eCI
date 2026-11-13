@@ -12,6 +12,10 @@ from the daily attributable numbers of deaths (point estimate and coefficient dr
 The point estimates and I_eCI are checked against the summaries saved by the tutorial.
 For the 21-year periods, the Monte Carlo standard errors of the endpoints are
 estimated by the standard deviations over resamples of the coefficient draws.
+For the 21-year periods, we also compute the GCM-specific impact at the point estimate,
+the GCM-specific percentile interval over the coefficient draws, and the share of the
+variance between the GCMs in the variance of the impacts pooled over the GCMs and the
+coefficient draws.
 """
 
 import os
@@ -24,7 +28,7 @@ for _var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"]:
 import numpy as np
 import pandas as pd
 import rdata
-from eci_intervals import interval_eci, interval_mu, interval_re_t
+from eci_intervals import QUANTILE_METHOD, interval_eci, interval_mu, interval_re_t
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -162,7 +166,8 @@ def main():
     print(f"GCMs: {gcms}; coefficient draws: {n_draws}", flush=True)
 
     rows = []
-    sd_rows = []
+    gcm_rows = []
+    share_rows = []
     se_rows = []
     rng = np.random.default_rng(CONFIG["RANDOM_STATE"])
     # 21-year periods
@@ -177,16 +182,33 @@ def main():
                     .sum(axis=0)
                     .to_numpy()
                 )
-            # standard deviation of the GCM-specific annual impact over the coefficient draws
+            # GCM-specific annual impact: point estimate, percentile interval over the
+            # coefficient draws, and standard deviation over the coefficient draws
+            f = CONFIG["PERIOD_YEARS"]
             for g, v in zip(gcms, sums):
-                sd_rows.append(
+                low, high = np.quantile(v[1:], [0.025, 0.975], method=QUANTILE_METHOD)
+                gcm_rows.append(
                     {
                         "time": period,
                         "age_group": age,
                         "gcm": g,
-                        "sd": np.std(v[1:], ddof=1) / CONFIG["PERIOD_YEARS"],
+                        "est": v[0] / f,
+                        "low": low / f,
+                        "high": high / f,
+                        "sd": np.std(v[1:], ddof=1) / f,
                     }
                 )
+            # variance of the pooled impacts = mean of the within-GCM variances
+            # + variance of the GCM-specific means (both with the divisor of the count)
+            draws = np.column_stack([v[1:] for v in sums]) / f
+            between = np.var(draws.mean(axis=0))
+            share_rows.append(
+                {
+                    "time": period,
+                    "age_group": age,
+                    "between_share": between / np.var(draws.ravel()),
+                }
+            )
             for alpha in CONFIG["ALPHA_LIST"]:
                 s = summarize(sums, alpha)
                 se = monte_carlo_se(sums, alpha, rng)
@@ -266,9 +288,13 @@ def main():
     res = pd.DataFrame(rows)
     res.to_csv(out / "reanalysis_intervals.csv", index=False)
     print(res[res["aggregation"] != "decade"].round(1).to_string(index=False))
-    sd = pd.DataFrame(sd_rows)
-    sd.to_csv(out / "reanalysis_gcm_sd.csv", index=False)
-    print(sd.round(1).to_string(index=False))
+    gcm = pd.DataFrame(gcm_rows)
+    gcm.to_csv(out / "reanalysis_gcm_specific.csv", index=False)
+    print(gcm.round(1).to_string(index=False))
+    share = pd.DataFrame(share_rows)
+    share.to_csv(out / "reanalysis_variance_share.csv", index=False)
+    print("Share of the variance between the GCMs")
+    print(share.round(3).to_string(index=False))
     se = pd.DataFrame(se_rows)
     se.to_csv(out / "reanalysis_mc_se.csv", index=False)
     print("Monte Carlo standard errors of the endpoints")

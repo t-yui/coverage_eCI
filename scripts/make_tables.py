@@ -392,6 +392,54 @@ def table_reanalysis():
     write("reanalysis_periods.tex", lines)
 
 
+def table_reanalysis_gcm():
+    gcm = read_csv(Path(CONFIG["REANALYSIS_DIR"]) / "reanalysis_gcm_specific.csv")
+    share = read_csv(Path(CONFIG["REANALYSIS_DIR"]) / "reanalysis_variance_share.csv")
+    lines = [
+        r"\begin{tabular}{lllrccc}",
+        r"\toprule",
+        r"Period & Age group & GCM & $H_l(\widehat{\theta})$ & Percentiles & SD & Share \\",
+        r"\midrule",
+    ]
+    for j, period in enumerate(["gwl", "endcentury"]):
+        if j > 0:
+            lines.append(r"\addlinespace")
+        for i, age in enumerate(["00_74", "75plus", "total"]):
+            sub = (
+                None
+                if gcm is None
+                else gcm[(gcm["time"] == period) & (gcm["age_group"] == age)]
+            )
+            sh = (
+                None
+                if share is None
+                else share[(share["time"] == period) & (share["age_group"] == age)]
+            )
+            rows = [None] * 3 if sub is None or sub.empty else list(sub.itertuples())
+            for k, r in enumerate(rows):
+                per = PERIOD_LABELS[period] if (i == 0 and k == 0) else ""
+                agl = AGE_LABELS[age] if k == 0 else ""
+                if r is None:
+                    vals = ["", TBD, TBD, TBD]
+                else:
+                    vals = [
+                        r.gcm,
+                        f"{r.est:.0f}",
+                        f"$({r.low:.0f}, {r.high:.0f})$",
+                        f"{r.sd:.0f}",
+                    ]
+                shv = ""
+                if k == 0:
+                    shv = (
+                        TBD
+                        if sh is None or sh.empty
+                        else f"{sh['between_share'].iloc[0]:.2f}"
+                    )
+                lines.append(f"{per} & {agl} & " + " & ".join(vals) + f" & {shv} \\\\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    write("reanalysis_gcm_specific.tex", lines)
+
+
 def main():
     table_exact_configurations()
     table_heterogeneous_infimum()
@@ -402,6 +450,7 @@ def main():
     table_projection_random(s, 0.05, "simulation_random_a05.tex")
     table_projection_random(s, 0.34, "simulation_random_a34.tex")
     table_reanalysis()
+    table_reanalysis_gcm()
 
 
 if __name__ == "__main__":
