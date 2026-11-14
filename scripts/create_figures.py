@@ -58,8 +58,8 @@ def figure_exact():
         axes[:2],
         [0.05, 0.34],
         [
-            "a) Location-shift model\n$1-\\alpha=0.95$",
-            "b) Location-shift model\n$1-\\alpha=0.66$",
+            "a) One distant GCM\n$1-\\alpha=0.95$",
+            "b) One distant GCM\n$1-\\alpha=0.66$",
         ],
     ):
         sub = d[np.isclose(d["alpha"], alpha)]
@@ -99,7 +99,7 @@ def figure_exact():
     ax.set_ylabel(r"Coverage for $\mu_{\infty}(\theta_0)$")
     ax.set_ylim(0.4, 1.01)
     style(ax)
-    panel_title(ax, f"c) Population mean, $L={L}$\n$1-\\alpha=0.95$")
+    panel_title(ax, f"c) Random-effects model\n$L={L}$, $1-\\alpha=0.95$")
     ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
     out = Path(CONFIG["OUTPUT_DIR"])
     out.mkdir(parents=True, exist_ok=True)
