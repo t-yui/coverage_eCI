@@ -144,29 +144,6 @@ def exact_coverage_eci(e, alpha):
     return norm.cdf(q_hi) - norm.cdf(q_lo)
 
 
-def exact_coverage_eci_random_gcm(H0, sd, alpha):
-    """
-    exact coverage of I_eCI for H_s(theta_0) under the linear Gaussian model
-    with J -> infinity, where s is uniform on {1..L}
-
-    H0 : array (L,), the impacts H_l(theta_0)
-    sd : array (L,), the standard deviations c_l sigma
-
-    With theta_hat = theta_0 + sigma X, the mixture distribution function at
-    H_k(theta_0) is g_k(X) = L^{-1} sum_l Phi(d_kl - X) with
-    d_kl = {H_k(theta_0) - H_l(theta_0)} / (c_l sigma), which is decreasing in X,
-    so that the coverage given s = k is Phi(x_hi) - Phi(x_lo) with
-    g_k(x_hi) = alpha / 2 and g_k(x_lo) = 1 - alpha / 2.
-    """
-    H0 = np.asarray(H0, dtype=float)
-    sd = np.asarray(sd, dtype=float)
-    d = (H0[:, None] - H0[None, :]) / sd[None, :]  # (k, l)
-    # g_k(X) <= p if and only if X >= -q_p(-d_k), where q_p is the mixture quantile
-    x_hi = -mixture_quantile(alpha / 2, -d)
-    x_lo = -mixture_quantile(1 - alpha / 2, -d)
-    return float(np.mean(norm.cdf(x_hi) - norm.cdf(x_lo)))
-
-
 def exact_width_ratio_common(e, alpha):
     """width of I_eCI divided by that of I_mu in the location-shift model (c_1 = ... = c_L)"""
     q_lo = mixture_quantile(alpha / 2, e)

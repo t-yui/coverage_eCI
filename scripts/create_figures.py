@@ -51,9 +51,8 @@ def panel_title(ax, text):
 
 def figure_exact():
     d = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "distant_gcm.csv")
-    h = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "heterogeneous.csv")
     sp = pd.read_csv(Path(CONFIG["EXACT_DIR"]) / "superpopulation.csv")
-    fig, axes = plt.subplots(2, 2, figsize=(7.2, 5.4), constrained_layout=True)
+    fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.9), constrained_layout=True)
     axes = axes.ravel()
     for ax, alpha, title in zip(
         axes[:2],
@@ -82,24 +81,6 @@ def figure_exact():
         panel_title(ax, title)
         ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
     ax = axes[2]
-    for k, L in enumerate(sorted(h["L"].unique())):
-        s = h[h["L"] == L]
-        ax.plot(
-            s["eta"],
-            s["coverage_eci"],
-            color=PALETTE[k],
-            ls=LINESTYLES[k],
-            lw=1.4,
-            label=f"$L={L}$",
-        )
-    ax.axhline(0.95, color=INK_SECONDARY, lw=0.8, ls=":")
-    ax.set_xlabel(r"$\eta$")
-    ax.set_ylabel(r"Coverage of $I_{\mathrm{eCI}}$ for $\mu_L(\theta_0)$")
-    ax.set_ylim(0.48, 1.01)
-    style(ax)
-    panel_title(ax, "c) Differences depending\non the coefficient, $1-\\alpha=0.95$")
-    ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
-    ax = axes[3]
     L = CONFIG["POPULATION_PANEL_L"]
     sub = sp[(sp["L"] == L) & (sp["rho"] > 0)]
     methods = [
@@ -118,7 +99,7 @@ def figure_exact():
     ax.set_ylabel(r"Coverage for $\mu_{\infty}(\theta_0)$")
     ax.set_ylim(0.4, 1.01)
     style(ax)
-    panel_title(ax, f"d) Population mean, $L={L}$\n$1-\\alpha=0.95$")
+    panel_title(ax, f"c) Population mean, $L={L}$\n$1-\\alpha=0.95$")
     ax.legend(loc="lower left", fontsize=7.5, handlelength=2.6)
     out = Path(CONFIG["OUTPUT_DIR"])
     out.mkdir(parents=True, exist_ok=True)

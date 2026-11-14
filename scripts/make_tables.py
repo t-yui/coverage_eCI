@@ -109,39 +109,6 @@ def table_exact_configurations():
     write("exact_configurations.tex", lines)
 
 
-def table_heterogeneous_infimum():
-    df = read_csv(Path(CONFIG["EXACT_DIR"]) / "heterogeneous_infimum.csv")
-    Ls = [2, 3, 5, 10, 20, 40]
-    head = " & ".join(f"${L}$" for L in Ls)
-    if df is None:
-        num = [TBD] * len(Ls)
-        ref = [f3(max(0.0, 1 - L * 0.025)) for L in Ls]
-    else:
-        num = [
-            (
-                f3(float(df.loc[df["L"] == L, "numerical_minimum"].iloc[0]))
-                if (df["L"] == L).any()
-                else TBD
-            )
-            for L in Ls
-        ]
-        ref = [f3(max(0.0, 1 - L * 0.025)) for L in Ls]
-    lines = [
-        r"\begin{tabular}{l" + "c" * len(Ls) + "}",
-        r"\toprule",
-        r"$L$ & " + head + r" \\",
-        r"\midrule",
-        r"Smallest value of the coverage obtained & " + " & ".join(num) + r" \\",
-        r"$\max(0, 1-L\alpha/2)$ & " + " & ".join(ref) + r" \\",
-        r"\bottomrule",
-        r"\end{tabular}",
-    ]
-    write("exact_heterogeneous_infimum.tex", lines)
-
-
-# projection-type simulation
-
-
 def summarize_projection():
     path = Path(CONFIG["SIMULATION_DIR"]) / "projection_raw.csv.gz"
     if not path.exists():
@@ -442,7 +409,6 @@ def table_reanalysis_gcm():
 
 def main():
     table_exact_configurations()
-    table_heterogeneous_infimum()
     s = summarize_projection()
     for D in DAILY_DEATHS:
         table_projection_fixed(s, D)
