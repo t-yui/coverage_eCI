@@ -18,6 +18,8 @@ The code computes and evaluates the following intervals from the coefficient dra
 - Python ≥ 3.9.0
 - Required libraries: [requirements.txt](requirements.txt)
 
+The code was checked with Python 3.9 and 3.13.
+
 ## License
 
 This repository is licensed under the [MIT License](LICENSE).
@@ -69,7 +71,7 @@ python3 exact_coverage.py
 python3 simulation_projection.py
 ```
 
-3. Downloading the data of the reanalysis[^1]
+3. Downloading the data of the reanalysis
 
 ```sh
 python3 download_data.py
@@ -94,14 +96,3 @@ python3 create_figures.py
 ```
 
 The results are saved in `results_exact`, `results_simulation`, and `results_reanalysis`, and the tables and figures of the paper are saved in `results_for_paper/tables` and `results_for_paper/images`.
-Cells of the tables whose results are not available are filled with `\TBDcell`.
-
-### Code for version 1 of the preprint
-
-The numerical results in version 1 of the preprint on medRxiv (doi: [10.64898/2026.08.01.26359345](https://doi.org/10.64898/2026.08.01.26359345)) were obtained with the code at the tag [`medrxiv-v1`](https://github.com/t-yui/coverage_eCI/tree/medrxiv-v1) of this repository, which is also available in the branch [`medRxiv_v1`](https://github.com/t-yui/coverage_eCI/tree/medRxiv_v1).
-
-### Computation time
-
-With `N_JOBS = 4`, the projection-type simulation with $2{,}000$ repetitions takes about 5 minutes.
-The exact computations take about 40 minutes, most of which is the numerical minimization of the coverage when the differences among the GCM-specific impacts depend on the coefficient.
-The code was checked with Python 3.9 and 3.13.
